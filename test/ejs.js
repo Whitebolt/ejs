@@ -161,6 +161,10 @@ suite('ejs.compile(str, options)', function () {
     }
   });
 
+  test('strict mode works', function () {
+    assert.equal(ejs.render(fixture('strict.ejs'), {}, {strict: true}), 'true');
+  });
+
 });
 
 suite('ejs.render(str, data, opts)', function () {
@@ -736,6 +740,14 @@ suite('include()', function () {
         fixture('include.html'));
   });
 
+  test('include ejs with set root path', function () {
+    var file = 'test/fixtures/include-root.ejs',
+        viewsPath = path.join(__dirname, 'fixtures');
+    assert.equal(ejs.render(fixture('include-root.ejs'), {pets: users}, {filename: file, delimiter: '@',root:viewsPath}),
+      fixture('include.html'));
+
+  });
+
   test('work when nested', function () {
     var file = 'test/fixtures/menu.ejs';
     assert.equal(ejs.render(fixture('menu.ejs'), {pets: users}, {filename: file}),
@@ -892,6 +904,15 @@ suite('preprocessor include', function () {
     out = ejs.render(fixture('include_preprocessor_cache.ejs'), {}, options);
     assert.equal(out, expected);
   });
+
+  test('whitespace slurp and rmWhitespace work', function() {
+    var file = 'test/fixtures/include_preprocessor_line_slurp.ejs'
+      , template = fixture('include_preprocessor_line_slurp.ejs')
+      , expected = fixture('include_preprocessor_line_slurp.html')
+      , options = {rmWhitespace: true, filename: file};
+    assert.equal(ejs.render(template, options),
+        expected);
+  })
 
 });
 
