@@ -4,12 +4,12 @@
  * Module dependencies.
  */
 
-var ejs = require('..')
-  , fs = require('fs')
-  , read = fs.readFileSync
-  , assert = require('assert')
-  , path = require('path')
-  , LRU = require('lru-cache');
+var ejs = require('..');
+var fs = require('fs');
+var read = fs.readFileSync;
+var assert = require('assert');
+var path = require('path');
+var LRU = require('lru-cache');
 
 try {
   fs.mkdirSync(__dirname + '/tmp');
@@ -103,10 +103,20 @@ suite('ejs.compile(str, options)', function () {
     delete ejs.delimiter;
   });
 
+  test('support custom escape function', function () {
+    var customEscape;
+    var fn;
+    customEscape = function customEscape(str) {
+      return !str ? '' : str.toUpperCase();
+    };
+    fn = ejs.compile('HELLO <%= name %>', {escape: customEscape});
+    assert.equal(fn({name: 'world'}), 'HELLO WORLD');
+  });
+
   test('have a working client option', function () {
-    var fn
-      , str
-      , preFn;
+    var fn;
+    var str;
+    var preFn;
     fn = ejs.compile('<p><%= foo %></p>', {client: true});
     str = fn.toString();
     if (!process.env.running_under_istanbul) {
@@ -116,9 +126,9 @@ suite('ejs.compile(str, options)', function () {
   });
 
   test('support client mode without locals', function () {
-    var fn
-      , str
-      , preFn;
+    var fn;
+    var str;
+    var preFn;
     fn = ejs.compile('<p><%= "foo" %></p>', {client: true});
     str = fn.toString();
     if (!process.env.running_under_istanbul) {
@@ -136,20 +146,10 @@ suite('ejs.compile(str, options)', function () {
     assert((fn.toString().match(/rethrow/g) || []).length <= 1);
   });
 
-  test('support custom escape function', function () {
-    var customEscape
-      , fn;
-    customEscape = function customEscape(str) {
-      return !str ? '' : str.toUpperCase();
-    };
-    fn = ejs.compile('HELLO <%= name %>', {escape: customEscape});
-    assert.equal(fn({name: 'world'}), 'HELLO WORLD');
-  });
-
   test('support custom escape function in client mode', function () {
-    var customEscape
-      , fn
-      , str;
+    var customEscape;
+    var fn;
+    var str;
     customEscape = function customEscape(str) {
       return !str ? '' : str.toUpperCase();
     };
@@ -157,19 +157,28 @@ suite('ejs.compile(str, options)', function () {
     str = fn.toString();
     if (!process.env.running_under_istanbul) {
       eval('var preFn = ' + str);
-      assert.equal(preFn({name: 'world'}), 'HELLO WORLD');
+      assert.equal(preFn({name: 'world'}), 'HELLO WORLD');  // eslint-disable-line no-undef
     }
   });
 
-  test('strict mode works', function () {
-    assert.equal(ejs.render(fixture('strict.ejs'), {}, {strict: true}), 'true');
+  test('escape filename in errors in client mode', function () {
+    assert.throws(function () {
+      var fn = ejs.compile('<% throw new Error("whoops"); %>', {client: true, filename: '<script>'});
+      fn();
+    }, /Error: &lt;script&gt;/);
   });
-
 });
 
 suite('ejs.render(str, data, opts)', function () {
   test('render the template', function () {
     assert.equal(ejs.render('<p>yay</p>'), '<p>yay</p>');
+  });
+
+  test('disallow unsafe opts passed along in data', function () {
+    assert.equal(ejs.render('<p><?= locals.foo ?></p>',
+      // localsName should not get reset because it's blacklisted
+      {_with: false, foo: 'yay', delimiter: '?', localsName: '_'}),
+      '<p>yay</p>');
   });
 
   test('empty input works', function () {
@@ -228,10 +237,10 @@ suite('ejs.render(str, data, opts)', function () {
   });
 
   test('support caching', function () {
-    var file = __dirname + '/tmp/render.ejs'
-      , options = {cache: true, filename: file}
-      , out = ejs.render('<p>Old</p>', {}, options)
-      , expected = '<p>Old</p>';
+    var file = __dirname + '/tmp/render.ejs';
+    var options = {cache: true, filename: file};
+    var out = ejs.render('<p>Old</p>', {}, options);
+    var expected = '<p>Old</p>';
     assert.equal(out, expected);
     // Assert no change, still in cache
     out = ejs.render('<p>New</p>', {}, options);
@@ -239,11 +248,11 @@ suite('ejs.render(str, data, opts)', function () {
   });
 
   test('support LRU caching', function () {
-    var oldCache = ejs.cache
-      , file = __dirname + '/tmp/render.ejs'
-      , options = {cache: true, filename: file}
-      , out
-      , expected = '<p>Old</p>';
+    var oldCache = ejs.cache;
+    var file = __dirname + '/tmp/render.ejs';
+    var options = {cache: true, filename: file};
+    var out;
+    var expected = '<p>Old</p>';
 
     // Switch to LRU
     ejs.cache = LRU();
@@ -259,8 +268,8 @@ suite('ejs.render(str, data, opts)', function () {
   });
 
   test('opts.context', function () {
-    var ctxt = {foo: 'FOO'}
-      , out = ejs.render('<%= this.foo %>', {}, {context: ctxt});
+    var ctxt = {foo: 'FOO'};
+    var out = ejs.render('<%= this.foo %>', {}, {context: ctxt});
     assert.equal(out, ctxt.foo);
   });
 });
@@ -277,8 +286,8 @@ suite('ejs.renderFile(path, [data], [options], fn)', function () {
   });
 
   test('accept locals', function (done) {
-    var data = {name: 'fonebone'}
-      , options = {delimiter: '$'};
+    var data = {name: 'fonebone'};
+    var options = {delimiter: '$'};
     ejs.renderFile('test/fixtures/user.ejs', data, options, function (err, html) {
       if (err) {
         return done(err);
@@ -289,9 +298,9 @@ suite('ejs.renderFile(path, [data], [options], fn)', function () {
   });
 
   test('accept locals without using with() {}', function (done) {
-    var data = {name: 'fonebone'}
-      , options = {delimiter: '$', _with: false}
-      , doneCount = 0;
+    var data = {name: 'fonebone'};
+    var options = {delimiter: '$', _with: false};
+    var doneCount = 0;
     ejs.renderFile('test/fixtures/user-no-with.ejs', data, options,
       function (err, html) {
         if (err) {
@@ -323,9 +332,9 @@ suite('ejs.renderFile(path, [data], [options], fn)', function () {
   });
 
   test('not catch err thrown by callback', function (done) {
-    var data = {name: 'fonebone'}
-      , options = {delimiter: '$'}
-      , counter = 0;
+    var data = {name: 'fonebone'};
+    var options = {delimiter: '$'};
+    var counter = 0;
 
     var d = require('domain').create();
     d.on('error', function (err) {
@@ -354,9 +363,9 @@ suite('ejs.renderFile(path, [data], [options], fn)', function () {
   });
 
   test('support caching', function (done) {
-    var expected = '<p>Old</p>'
-      , file = __dirname + '/tmp/renderFile.ejs'
-      , options = {cache: true};
+    var expected = '<p>Old</p>';
+    var file = __dirname + '/tmp/renderFile.ejs';
+    var options = {cache: true};
     fs.writeFileSync(file, '<p>Old</p>');
 
     ejs.renderFile(file, {}, options, function (err, out) {
@@ -393,10 +402,10 @@ suite('ejs.renderFile(path, [data], [options], fn)', function () {
 
 suite('cache specific', function () {
   test('`clearCache` work properly', function () {
-    var expected = '<p>Old</p>'
-      , file = __dirname + '/tmp/clearCache.ejs'
-      , options = {cache: true, filename: file}
-      , out = ejs.render('<p>Old</p>', {}, options);
+    var expected = '<p>Old</p>';
+    var file = __dirname + '/tmp/clearCache.ejs';
+    var options = {cache: true, filename: file};
+    var out = ejs.render('<p>Old</p>', {}, options);
     assert.equal(out, expected);
 
     ejs.clearCache();
@@ -407,11 +416,11 @@ suite('cache specific', function () {
   });
 
   test('`clearCache` work properly, LRU', function () {
-    var expected = '<p>Old</p>'
-      , oldCache = ejs.cache
-      , file = __dirname + '/tmp/clearCache.ejs'
-      , options = {cache: true, filename: file}
-      , out;
+    var expected = '<p>Old</p>';
+    var oldCache = ejs.cache;
+    var file = __dirname + '/tmp/clearCache.ejs';
+    var options = {cache: true, filename: file};
+    var out;
 
     ejs.cache = LRU();
 
@@ -426,11 +435,11 @@ suite('cache specific', function () {
   });
 
   test('LRU with cache-size 1', function () {
-    var oldCache = ejs.cache
-      , options
-      , out
-      , expected
-      , file;
+    var oldCache = ejs.cache;
+    var options;
+    var out;
+    var expected;
+    var file;
 
     ejs.cache = LRU(1);
 
@@ -669,8 +678,8 @@ suite('exceptions', function () {
 
   var unhook = null;
   test('log JS source when debug is set', function (done) {
-    var out = ''
-      , needToExit = false;
+    var out = '';
+    var needToExit = false;
     unhook = hook_stdio(process.stdout, function (str) {
       out += str;
       if (needToExit) {
@@ -804,10 +813,10 @@ suite('include()', function () {
 
   test('support caching', function () {
     fs.writeFileSync(__dirname + '/tmp/include.ejs', '<p>Old</p>');
-    var file = 'test/fixtures/include_cache.ejs'
-      , options = {cache: true, filename: file}
-      , out = ejs.render(fixture('include_cache.ejs'), {}, options)
-      , expected = fixture('include_cache.html');
+    var file = 'test/fixtures/include_cache.ejs';
+    var options = {cache: true, filename: file};
+    var out = ejs.render(fixture('include_cache.ejs'), {}, options);
+    var expected = fixture('include_cache.html');
     assert.equal(out, expected);
     out = ejs.render(fixture('include_cache.ejs'), {}, options);
     // No change, still in cache
@@ -868,7 +877,7 @@ suite('preprocessor include', function () {
 
   test('pass compileDebug to include', function () {
     var file = 'test/fixtures/include_preprocessor.ejs'
-      , fn;
+    var fn;
     fn = ejs.compile(fixture('include_preprocessor.ejs'), {
       filename: file
       , delimiter: '@'
@@ -888,9 +897,9 @@ suite('preprocessor include', function () {
 
   test('is static', function () {
     fs.writeFileSync(__dirname + '/tmp/include_preprocessor.ejs', '<p>Old</p>');
-    var file = 'test/fixtures/include_preprocessor_cache.ejs'
-      , options = {filename: file}
-      , out = ejs.compile(fixture('include_preprocessor_cache.ejs'), options);
+    var file = 'test/fixtures/include_preprocessor_cache.ejs';
+    var options = {filename: file};
+    var out = ejs.compile(fixture('include_preprocessor_cache.ejs'), options);
     assert.equal(out(), '<p>Old</p>\n');
 
     fs.writeFileSync(__dirname + '/tmp/include_preprocessor.ejs', '<p>New</p>');
@@ -899,10 +908,10 @@ suite('preprocessor include', function () {
 
   test('support caching', function () {
     fs.writeFileSync(__dirname + '/tmp/include_preprocessor.ejs', '<p>Old</p>');
-    var file = 'test/fixtures/include_preprocessor_cache.ejs'
-      , options = {cache: true, filename: file}
-      , out = ejs.render(fixture('include_preprocessor_cache.ejs'), {}, options)
-      , expected = fixture('include_preprocessor_cache.html');
+    var file = 'test/fixtures/include_preprocessor_cache.ejs';
+    var options = {cache: true, filename: file};
+    var out = ejs.render(fixture('include_preprocessor_cache.ejs'), {}, options);
+    var expected = fixture('include_preprocessor_cache.html');
     assert.equal(out, expected);
     fs.writeFileSync(__dirname + '/tmp/include_preprocessor.ejs', '<p>New</p>');
     out = ejs.render(fixture('include_preprocessor_cache.ejs'), {}, options);
@@ -910,10 +919,10 @@ suite('preprocessor include', function () {
   });
 
   test('whitespace slurp and rmWhitespace work', function () {
-    var file = 'test/fixtures/include_preprocessor_line_slurp.ejs'
-      , template = fixture('include_preprocessor_line_slurp.ejs')
-      , expected = fixture('include_preprocessor_line_slurp.html')
-      , options = {rmWhitespace: true, filename: file};
+    var file = 'test/fixtures/include_preprocessor_line_slurp.ejs';
+    var template = fixture('include_preprocessor_line_slurp.ejs');
+    var expected = fixture('include_preprocessor_line_slurp.html');
+    var options = {rmWhitespace: true, filename: file};
     assert.equal(ejs.render(template, options),
       expected);
   })
@@ -931,8 +940,8 @@ suite('require', function () {
 
   // Only works with inline/preprocessor includes
   test('allow ejs templates to be required as node modules', function () {
-    var file = 'test/fixtures/include_preprocessor.ejs'
-      , template = require(__dirname + '/fixtures/menu_preprocessor.ejs');
+    var file = 'test/fixtures/include_preprocessor.ejs';
+    var template = require(__dirname + '/fixtures/menu_preprocessor.ejs');
     if (!process.env.running_under_istanbul) {
       assert.equal(template({filename: file, pets: users}),
         fixture('menu_preprocessor.html'));
@@ -950,8 +959,8 @@ suite('examples', function () {
     }
     suite(f, function () {
       test('doesn\'t throw any errors', function () {
-        var stderr = hook_stdio(process.stderr, noop)
-          , stdout = hook_stdio(process.stdout, noop);
+        var stderr = hook_stdio(process.stderr, noop);
+        var stdout = hook_stdio(process.stdout, noop);
         try {
           require('../examples/' + f);
         }
