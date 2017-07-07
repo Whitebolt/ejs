@@ -1,4 +1,5 @@
 /* jshint mocha: true */
+/* eslint-env node, mocha */
 
 /**
  * Module dependencies.
@@ -23,13 +24,13 @@ try {
 function hook_stdio(stream, callback) {
   var old_write = stream.write;
 
-  stream.write = (function () {
-    return function (string, encoding, fd) {
+  stream.write = (function() {
+    return function(string, encoding, fd) {
       callback(string, encoding, fd);
     };
   })(stream.write);
 
-  return function () {
+  return function() {
     stream.write = old_write;
   };
 }
@@ -113,6 +114,14 @@ suite('ejs.compile(str, options)', function () {
     assert.equal(fn({name: 'world'}), 'HELLO WORLD');
   });
 
+  test('strict mode works', function () {
+    assert.equal(ejs.render(fixture('strict.ejs'), {}, {strict: true}), 'true');
+  });
+
+});
+
+suite('client mode', function () {
+
   test('have a working client option', function () {
     var fn;
     var str;
@@ -139,8 +148,8 @@ suite('ejs.compile(str, options)', function () {
 
   test('not include rethrow() in client mode if compileDebug is false', function () {
     var fn = ejs.compile('<p><%= "foo" %></p>', {
-      client: true
-      , compileDebug: false
+      client: true,
+      compileDebug: false
     });
     // There could be a `rethrow` in the function declaration
     assert((fn.toString().match(/rethrow/g) || []).length <= 1);
@@ -157,7 +166,7 @@ suite('ejs.compile(str, options)', function () {
     str = fn.toString();
     if (!process.env.running_under_istanbul) {
       eval('var preFn = ' + str);
-      assert.equal(preFn({name: 'world'}), 'HELLO WORLD');  // eslint-disable-line no-undef
+      assert.equal(preFn({name: 'world'}), 'HELLO WORLD'); // eslint-disable-line no-undef
     }
   });
 
@@ -169,9 +178,11 @@ suite('ejs.compile(str, options)', function () {
   });
 });
 
-suite('ejs.render(str, data, opts)', function () {
-  test('render the template', function () {
-    assert.equal(ejs.render('<p>yay</p>'), '<p>yay</p>');
+/* Old API -- remove when this shim goes away */
+suite('ejs.render(str, dataAndOpts)', function () {
+  test('render the template with data/opts passed together', function () {
+    assert.equal(ejs.render('<p><?= foo ?></p>', {foo: 'yay', delimiter: '?'}),
+      '<p>yay</p>');
   });
 
   test('disallow unsafe opts passed along in data', function () {
@@ -179,6 +190,12 @@ suite('ejs.render(str, data, opts)', function () {
       // localsName should not get reset because it's blacklisted
       {_with: false, foo: 'yay', delimiter: '?', localsName: '_'}),
       '<p>yay</p>');
+  });
+});
+
+suite('ejs.render(str, data, opts)', function () {
+  test('render the template', function () {
+    assert.equal(ejs.render('<p>yay</p>'), '<p>yay</p>');
   });
 
   test('empty input works', function () {
@@ -218,7 +235,7 @@ suite('ejs.render(str, data, opts)', function () {
     assert.equal(ejs.render('<p><%= locals.name %></p>', {name: 'geddy'},
       {_with: false}),
       '<p>geddy</p>');
-    assert.throws(function () {
+    assert.throws(function() {
       ejs.render('<p><%= name %></p>', {name: 'geddy'},
         {_with: false});
     }, /name is not defined/);
@@ -229,7 +246,7 @@ suite('ejs.render(str, data, opts)', function () {
     assert.equal(ejs.render('<p><%= it.name %></p>', {name: 'geddy'},
       {_with: false}),
       '<p>geddy</p>');
-    assert.throws(function () {
+    assert.throws(function() {
       ejs.render('<p><%= name %></p>', {name: 'geddy'},
         {_with: false});
     }, /name is not defined/);
@@ -275,8 +292,8 @@ suite('ejs.render(str, data, opts)', function () {
 });
 
 suite('ejs.renderFile(path, [data], [options], fn)', function () {
-  test('render a file', function (done) {
-    ejs.renderFile('test/fixtures/para.ejs', function (err, html) {
+  test('render a file', function(done) {
+    ejs.renderFile('test/fixtures/para.ejs', function(err, html) {
       if (err) {
         return done(err);
       }
@@ -285,10 +302,10 @@ suite('ejs.renderFile(path, [data], [options], fn)', function () {
     });
   });
 
-  test('accept locals', function (done) {
-    var data = {name: 'fonebone'};
+  test('accept locals', function(done) {
+    var data =  {name: 'fonebone'};
     var options = {delimiter: '$'};
-    ejs.renderFile('test/fixtures/user.ejs', data, options, function (err, html) {
+    ejs.renderFile('test/fixtures/user.ejs', data, options, function(err, html) {
       if (err) {
         return done(err);
       }
@@ -297,26 +314,25 @@ suite('ejs.renderFile(path, [data], [options], fn)', function () {
     });
   });
 
-  test('accept locals without using with() {}', function (done) {
-    var data = {name: 'fonebone'};
+  test('accept locals without using with() {}', function(done) {
+    var data =  {name: 'fonebone'};
     var options = {delimiter: '$', _with: false};
     var doneCount = 0;
-    ejs.renderFile('test/fixtures/user-no-with.ejs', data, options,
-      function (err, html) {
-        if (err) {
-          if (doneCount === 2) {
-            return;
-          }
-          doneCount = 2;
-          return done(err);
-        }
-        assert.equal(html, '<h1>fonebone</h1>\n');
-        doneCount++;
+    ejs.renderFile('test/fixtures/user-no-with.ejs', data, options, function(err, html) {
+      if (err) {
         if (doneCount === 2) {
-          done();
+          return;
         }
-      });
-    ejs.renderFile('test/fixtures/user.ejs', data, options, function (err) {
+        doneCount = 2;
+        return done(err);
+      }
+      assert.equal(html, '<h1>fonebone</h1>\n');
+      doneCount++;
+      if (doneCount === 2) {
+        done();
+      }
+    });
+    ejs.renderFile('test/fixtures/user.ejs', data, options, function(err) {
       if (!err) {
         if (doneCount === 2) {
           return;
@@ -331,8 +347,8 @@ suite('ejs.renderFile(path, [data], [options], fn)', function () {
     });
   });
 
-  test('not catch err thrown by callback', function (done) {
-    var data = {name: 'fonebone'};
+  test('not catch err thrown by callback', function(done) {
+    var data =  {name: 'fonebone'};
     var options = {delimiter: '$'};
     var counter = 0;
 
@@ -349,15 +365,14 @@ suite('ejs.renderFile(path, [data], [options], fn)', function () {
       // domains. Have to make it async. Ticket closed because: "domains are
       // deprecated :D"
       process.nextTick(function () {
-        ejs.renderFile('test/fixtures/user.ejs', data, options,
-          function (err) {
-            counter++;
-            if (err) {
-              assert.notEqual(err.message, 'Exception in callback');
-              return done(err);
-            }
-            throw new Error('Exception in callback');
-          });
+        ejs.renderFile('test/fixtures/user.ejs', data, options, function(err) {
+          counter++;
+          if (err) {
+            assert.notEqual(err.message, 'Exception in callback');
+            return done(err);
+          }
+          throw new Error('Exception in callback');
+        });
       });
     });
   });
@@ -388,14 +403,13 @@ suite('ejs.renderFile(path, [data], [options], fn)', function () {
 
   test('opts.context', function (done) {
     var ctxt = {foo: 'FOO'};
-    ejs.renderFile('test/fixtures/with-context.ejs', {},
-      {context: ctxt}, function (err, html) {
-        if (err) {
-          return done(err);
-        }
-        assert.equal(html, ctxt.foo + '\n');
-        done();
-      });
+    ejs.renderFile('test/fixtures/with-context.ejs', {}, {context: ctxt}, function(err, html) {
+      if (err) {
+        return done(err);
+      }
+      assert.equal(html, ctxt.foo + '\n');
+      done();
+    });
 
   });
 });
@@ -485,6 +499,11 @@ suite('<%', function () {
 });
 
 suite('<%=', function () {
+  test('should not throw an error with a // comment on the final line', function () {
+    assert.equal(ejs.render('<%=\n// a comment\nname\n// another comment %>', {name: '&nbsp;<script>'}),
+      '&amp;nbsp;&lt;script&gt;');
+  });
+
   test('escape &amp;<script>', function () {
     assert.equal(ejs.render('<%= name %>', {name: '&nbsp;<script>'}),
       '&amp;nbsp;&lt;script&gt;');
@@ -500,7 +519,7 @@ suite('<%=', function () {
       '&amp;foo_bar;');
   });
 
-  test('should accept custom function', function () {
+  test('should accept custom function', function() {
 
     var customEscape = function customEscape(str) {
       return !str ? '' : str.toUpperCase();
@@ -514,6 +533,11 @@ suite('<%=', function () {
 });
 
 suite('<%-', function () {
+  test('should not throw an error with a // comment on the final line', function () {
+    assert.equal(ejs.render('<%-\n// a comment\nname\n// another comment %>', {name: '&nbsp;<script>'}),
+      '&nbsp;<script>');
+  });
+
   test('not escape', function () {
     assert.equal(ejs.render('<%- name %>', {name: '<script>'}),
       '<script>');
@@ -564,13 +588,13 @@ suite('-%>', function () {
   });
 
   test('works with unix style', function () {
-    var content = "<ul><% -%>\n"
-      + "<% users.forEach(function(user){ -%>\n"
-      + "<li><%= user.name -%></li>\n"
-      + "<% }) -%>\n"
-      + "</ul><% -%>\n";
+    var content = '<ul><% -%>\n'
+      + '<% users.forEach(function(user){ -%>\n'
+      + '<li><%= user.name -%></li>\n'
+      + '<% }) -%>\n'
+      + '</ul><% -%>\n';
 
-    var expectedResult = "<ul><li>geddy</li>\n<li>neil</li>\n<li>alex</li>\n</ul>";
+    var expectedResult = '<ul><li>geddy</li>\n<li>neil</li>\n<li>alex</li>\n</ul>';
     var fn;
     fn = ejs.compile(content);
     assert.equal(fn({users: users}),
@@ -578,13 +602,13 @@ suite('-%>', function () {
   });
 
   test('works with windows style', function () {
-    var content = "<ul><% -%>\r\n"
-      + "<% users.forEach(function(user){ -%>\r\n"
-      + "<li><%= user.name -%></li>\r\n"
-      + "<% }) -%>\r\n"
-      + "</ul><% -%>\r\n";
+    var content = '<ul><% -%>\r\n'
+      + '<% users.forEach(function(user){ -%>\r\n'
+      + '<li><%= user.name -%></li>\r\n'
+      + '<% }) -%>\r\n'
+      + '</ul><% -%>\r\n';
 
-    var expectedResult = "<ul><li>geddy</li>\r\n<li>neil</li>\r\n<li>alex</li>\r\n</ul>";
+    var expectedResult = '<ul><li>geddy</li>\r\n<li>neil</li>\r\n<li>alex</li>\r\n</ul>';
     var fn;
     fn = ejs.compile(content);
     assert.equal(fn({users: users}),
@@ -694,7 +718,23 @@ suite('exceptions', function () {
     });
     ejs.render(fixture('hello-world.ejs'), {}, {debug: true});
   });
-  teardown(function () {
+
+  test('escape filename in errors', function () {
+    assert.throws(function () {
+      ejs.render('<% throw new Error("whoops"); %>', {}, {filename: '<script>'});
+    }, /Error: &lt;script&gt;/);
+  });
+
+  test('filename in errors uses custom escape', function () {
+    assert.throws(function () {
+      ejs.render('<% throw new Error("whoops"); %>', {}, {
+        filename: '<script>',
+        escape: function () { return 'zooby'; }
+      });
+    }, /Error: zooby/);
+  });
+
+  teardown(function() {
     if (!unhook) {
       return;
     }
@@ -750,15 +790,10 @@ suite('include()', function () {
   });
 
   test('include ejs with set root path', function () {
-    var file = 'test/fixtures/include-root.ejs',
-      viewsPath = path.join(__dirname, 'fixtures');
-    assert.equal(ejs.render(fixture('include-root.ejs'), {pets: users}, {
-        filename: file,
-        delimiter: '@',
-        root: viewsPath
-      }),
+    var file = 'test/fixtures/include-root.ejs';
+    var viewsPath = path.join(__dirname, 'fixtures');
+    assert.equal(ejs.render(fixture('include-root.ejs'), {pets: users}, {filename: file, delimiter: '@',root:viewsPath}),
       fixture('include.html'));
-
   });
 
   test('work when nested', function () {
@@ -768,9 +803,9 @@ suite('include()', function () {
   });
 
   test('work with a variable path', function () {
-    var file = 'test/fixtures/menu_var.ejs',
-      includePath = 'includes/menu-item';
-    assert.equal(ejs.render(fixture('menu.ejs'), {pets: users, varPath: includePath}, {filename: file}),
+    var file = 'test/fixtures/menu_var.ejs';
+    var includePath = 'includes/menu-item';
+    assert.equal(ejs.render(fixture('menu.ejs'), {pets: users, varPath:  includePath}, {filename: file}),
       fixture('menu.html'));
   });
 
@@ -781,18 +816,18 @@ suite('include()', function () {
   });
 
   test('pass compileDebug to include', function () {
-    var file = 'test/fixtures/include.ejs'
-      , fn;
+    var file = 'test/fixtures/include.ejs';
+    var fn;
     fn = ejs.compile(fixture('include.ejs'), {
-      filename: file
-      , delimiter: '@'
-      , compileDebug: false
+      filename: file,
+      delimiter: '@',
+      compileDebug: false
     });
     try {
       // Render without a required variable reference
       fn({foo: 'asdf'});
     }
-    catch (e) {
+    catch(e) {
       assert.equal(e.message, 'pets is not defined');
       assert.ok(!e.path);
       return;
@@ -802,9 +837,9 @@ suite('include()', function () {
 
   test('is dynamic', function () {
     fs.writeFileSync(__dirname + '/tmp/include.ejs', '<p>Old</p>');
-    var file = 'test/fixtures/include_cache.ejs'
-      , options = {filename: file}
-      , out = ejs.compile(fixture('include_cache.ejs'), options);
+    var file = 'test/fixtures/include_cache.ejs';
+    var options = {filename: file};
+    var out = ejs.compile(fixture('include_cache.ejs'), options);
     assert.equal(out(), '<p>Old</p>\n');
 
     fs.writeFileSync(__dirname + '/tmp/include.ejs', '<p>New</p>');
@@ -824,6 +859,17 @@ suite('include()', function () {
     fs.writeFileSync(__dirname + '/tmp/include.ejs', '<p>New</p>');
     out = ejs.render(fixture('include_cache.ejs'), {}, options);
     assert.equal(out, expected);
+  });
+
+  test('handles errors in included file', function() {
+    try {
+      ejs.render('<%- include("fixtures/include-with-error") %>', {}, {filename: path.join(__dirname, 'f.ejs')});
+    }
+    catch (err) {
+      assert.ok(err.message.indexOf('foobar is not defined') > -1);
+      return;
+    }
+    throw new Error('expected inclusion error');
   });
 
 });
@@ -864,8 +910,8 @@ suite('preprocessor include', function () {
   });
 
   test('tracks dependency correctly', function () {
-    var file = 'test/fixtures/menu_preprocessor.ejs'
-      , fn = ejs.compile(fixture('menu_preprocessor.ejs'), {filename: file});
+    var file = 'test/fixtures/menu_preprocessor.ejs';
+    var fn = ejs.compile(fixture('menu_preprocessor.ejs'), {filename: file});
     assert(fn.dependencies.length);
   });
 
@@ -876,18 +922,18 @@ suite('preprocessor include', function () {
   });
 
   test('pass compileDebug to include', function () {
-    var file = 'test/fixtures/include_preprocessor.ejs'
+    var file = 'test/fixtures/include_preprocessor.ejs';
     var fn;
     fn = ejs.compile(fixture('include_preprocessor.ejs'), {
-      filename: file
-      , delimiter: '@'
-      , compileDebug: false
+      filename: file,
+      delimiter: '@',
+      compileDebug: false
     });
     try {
       // Render without a required variable reference
       fn({foo: 'asdf'});
     }
-    catch (e) {
+    catch(e) {
       assert.equal(e.message, 'pets is not defined');
       assert.ok(!e.path);
       return;
@@ -918,14 +964,25 @@ suite('preprocessor include', function () {
     assert.equal(out, expected);
   });
 
-  test('whitespace slurp and rmWhitespace work', function () {
+  test('whitespace slurp and rmWhitespace work', function() {
     var file = 'test/fixtures/include_preprocessor_line_slurp.ejs';
     var template = fixture('include_preprocessor_line_slurp.ejs');
     var expected = fixture('include_preprocessor_line_slurp.html');
     var options = {rmWhitespace: true, filename: file};
-    assert.equal(ejs.render(template, options),
+    assert.equal(ejs.render(template, {}, options),
       expected);
-  })
+  });
+
+  test('handles errors in included file', function() {
+    try {
+      ejs.render('<%- include fixtures/include-with-error %>', {}, {filename: path.join(__dirname, 'f.ejs')});
+    }
+    catch (err) {
+      assert.ok(err.message.indexOf('foobar is not defined') > -1);
+      return;
+    }
+    throw new Error('expected inclusion error');
+  });
 
 });
 
@@ -949,10 +1006,27 @@ suite('require', function () {
   });
 });
 
-suite('examples', function () {
-  function noop() {
-  }
+suite('test fileloader', function () {
 
+  var myFileLoad = function (filePath) {
+    return 'myFileLoad: ' + fs.readFileSync(filePath);
+  };
+
+  test('test custom fileload', function (done) {
+    ejs.fileLoader = myFileLoad;
+    ejs.renderFile('test/fixtures/para.ejs', function(err, html) {
+      if (err) {
+        return done(err);
+      }
+      assert.equal(html, 'myFileLoad: <p>hey</p>\n');
+      done();
+    });
+
+  });
+});
+
+suite('examples', function () {
+  function noop () {}
   fs.readdirSync('examples').forEach(function (f) {
     if (!/\.js$/.test(f)) {
       return;
@@ -973,5 +1047,15 @@ suite('examples', function () {
         stderr();
       });
     });
+  });
+});
+
+suite('meta information', function () {
+  test('has a version', function () {
+    assert.strictEqual(ejs.VERSION, require('../package.json').version);
+  });
+
+  test('had a name', function () {
+    assert.strictEqual(ejs.name, 'ejs');
   });
 });
