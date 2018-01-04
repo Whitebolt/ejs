@@ -1,5 +1,5 @@
 {
-  "name": "ejs",
+  "name": "@simpo/ejs",
   "description": "Embedded JavaScript templates",
   "keywords": [
     "template",
